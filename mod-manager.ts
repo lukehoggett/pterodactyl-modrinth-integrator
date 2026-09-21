@@ -96,8 +96,7 @@ export class ModManager {
                 mod.projectId,
                 match.game_versions,
                 match.loaders,
-                modSpecificAllowedTypes,
-                options.debug
+                modSpecificAllowedTypes
             );
 
             if (compatibleVersions.length > 0) {
