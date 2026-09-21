@@ -11,19 +11,25 @@ export class ModManager {
     private ptero = new PterodactylService();
     private modrinth = new ModrinthService();
 
-    async updateExistingMods(serverId: string, options: { debug?: boolean, minecraft?: string, loader?: string, channel?: string } = {}) {
+    async updateExistingMods(
+        serverId: string,
+        options: { debug?: boolean; minecraft?: string; loader?: string; channel?: string } = {}
+    ) {
         console.log(`\n[Update] Starting process for server: ${serverId}`);
-        
+
         const env = await this.ptero.getServerEnvironment(serverId);
-        
+
         let mcVersion = options.minecraft || 'Unknown';
         let loaderVersion = options.loader || 'Unknown';
-        
+
         if (env.variables && env.variables.length > 0) {
             const mcVar = env.variables.find((v) => v.attributes.env_variable === 'MINECRAFT_VERSION');
             if (mcVar && !options.minecraft) mcVersion = mcVar.attributes.server_value;
-            
-            const loaderVar = env.variables.find((v) => v.attributes.env_variable.includes('LOADER') || v.attributes.env_variable.includes('FABRIC_VERSION'));
+
+            const loaderVar = env.variables.find(
+                (v) =>
+                    v.attributes.env_variable.includes('LOADER') || v.attributes.env_variable.includes('FABRIC_VERSION')
+            );
             if (loaderVar && !options.loader) loaderVersion = loaderVar.attributes.server_value;
         }
 
@@ -32,7 +38,7 @@ export class ModManager {
         console.log('Minecraft Version: ' + mcVersion);
         console.log('Mod Loader: ' + loaderVersion);
         console.log('-------------------------------\n');
-        
+
         if (options.debug) {
             console.log('\n--- DEBUG: PTERODACTYL ENVIRONMENT ---');
             console.log(JSON.stringify(env, null, 2));
@@ -49,21 +55,21 @@ export class ModManager {
         for (const file of jarFiles) {
             const fileName = file.attributes.name;
             process.stdout.write(`Hashing ${fileName}... `);
-            
+
             const downloadUrl = await this.ptero.getDownloadUrl(serverId, `/mods/${fileName}`);
             const buffer = await this.ptero.downloadFileBuffer(downloadUrl);
-            
+
             const hash = crypto.createHash('sha1').update(buffer).digest('hex');
             hashes.push(hash);
-            
-            modData.push({ 
-                fileName, 
-                hash, 
-                currentVersion: 'Unknown', 
+
+            modData.push({
+                fileName,
+                hash,
+                currentVersion: 'Unknown',
                 latestVersion: 'Unknown',
-                updateAvailable: false 
+                updateAvailable: false
             });
-            
+
             console.log(`[${chalk.cyan(hash)}] Done.`);
         }
 
@@ -71,7 +77,7 @@ export class ModManager {
         const identifiedMods = await this.modrinth.getVersionsFromHashes(hashes);
 
         const updatableMods = [];
-        
+
         const channel = (options.channel || config.modrinthChannel || 'release').toLowerCase();
         let allowedVersionTypes = ['release'];
         if (channel === 'beta') allowedVersionTypes = ['release', 'beta'];
@@ -83,33 +89,37 @@ export class ModManager {
 
             mod.projectId = match.project_id;
             mod.currentVersion = match.version_number;
-            
-            const currentId = match.id; 
+
+            const currentId = match.id;
             const currentPublishedDate = new Date(match.date_published);
 
             if (options.debug) {
-                console.log(`[Debug] ${mod.fileName} mapped to ${match.project_id}. Game versions: [${match.game_versions}], Loaders: [${match.loaders}]`);
+                console.log(
+                    `[Debug] ${mod.fileName} mapped to ${match.project_id}. Game versions: [${match.game_versions}], Loaders: [${match.loaders}]`
+                );
             }
 
             let modSpecificAllowedTypes = [...allowedVersionTypes];
-            if (match.version_type === 'beta' && !modSpecificAllowedTypes.includes('beta')) modSpecificAllowedTypes.push('beta');
-            if (match.version_type === 'alpha' && !modSpecificAllowedTypes.includes('alpha')) modSpecificAllowedTypes.push('beta', 'alpha');
+            if (match.version_type === 'beta' && !modSpecificAllowedTypes.includes('beta'))
+                modSpecificAllowedTypes.push('beta');
+            if (match.version_type === 'alpha' && !modSpecificAllowedTypes.includes('alpha'))
+                modSpecificAllowedTypes.push('beta', 'alpha');
 
             const queryGameVersions = options.minecraft ? [options.minecraft] : match.game_versions;
             const queryLoaders = options.loader ? [options.loader] : match.loaders;
 
             const compatibleVersions = await this.modrinth.getCompatibleVersions(
-                mod.projectId, 
-                queryGameVersions, 
-                queryLoaders, 
-                modSpecificAllowedTypes, 
-                options.debug 
+                mod.projectId,
+                queryGameVersions,
+                queryLoaders,
+                modSpecificAllowedTypes,
+                options.debug
             );
-            
+
             if (compatibleVersions.length > 0) {
                 const latest = compatibleVersions[0];
                 mod.latestVersion = latest.version_number;
-                
+
                 const latestId = latest.id;
                 const latestPublishedDate = new Date(latest.date_published);
 
@@ -118,10 +128,10 @@ export class ModManager {
                     mod.updateAvailable = true;
                     mod.latestVersionId = latestId;
                     mod.downloadUrl = latest.files.find((f: any) => f.primary)?.url || latest.files[0].url;
-                    
+
                     updatableMods.push({
                         name: mod.fileName,
-                        value: mod, 
+                        value: mod,
                         description: `Update from ${mod.currentVersion} -> ${mod.latestVersion}\nLink: https://modrinth.com/mod/${mod.projectId}/version/${latestId}`
                     });
                 }
@@ -130,7 +140,7 @@ export class ModManager {
 
         // Build the colorized table
         const table = new Table({
-            head: ['File', 'Current', 'Latest', 'Status'].map(h => chalk.bold(h))
+            head: ['File', 'Current', 'Latest', 'Status'].map((h) => chalk.bold(h))
         });
 
         for (const m of modData) {
@@ -156,26 +166,21 @@ export class ModManager {
             } else {
                 status = 'Up to date';
                 rowColor = chalk.green;
-                displayLatest = m.currentVersion; 
+                displayLatest = m.currentVersion;
             }
 
-            table.push([
-                rowColor(m.fileName),
-                rowColor(m.currentVersion),
-                rowColor(displayLatest),
-                rowColor(status)
-            ]);
+            table.push([rowColor(m.fileName), rowColor(m.currentVersion), rowColor(displayLatest), rowColor(status)]);
         }
 
         console.log(`\n${table.toString()}`);
 
         if (options.debug && updatableMods.length > 0) {
             console.log(chalk.yellow('\n[Debug] The following mods passed the strict ID and Date check:'));
-            updatableMods.forEach(u => console.log(chalk.gray(` - ${u.name}: ID changed and date is newer.`)));
+            updatableMods.forEach((u) => console.log(chalk.gray(` - ${u.name}: ID changed and date is newer.`)));
         }
 
         if (updatableMods.length === 0) {
-            console.log("\nAll mods are up to date! Exiting.");
+            console.log('\nAll mods are up to date! Exiting.');
             return;
         }
 
@@ -193,7 +198,7 @@ export class ModManager {
             return;
         }
 
-        let modsToProcess = updatableMods.map(u => u.value);
+        let modsToProcess = updatableMods.map((u) => u.value);
 
         if (action === 'select') {
             modsToProcess = await checkbox({

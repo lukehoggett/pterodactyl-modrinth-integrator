@@ -13,7 +13,7 @@ export class ModrinthService {
     async getVersionsFromHashes(hashes: string[]) {
         // Prevent sending an empty array, which often causes a 400 Bad Request on APIs
         if (hashes.length === 0) {
-            console.log("\n[Debug] No hashes provided to Modrinth. Skipping request.");
+            console.log('\n[Debug] No hashes provided to Modrinth. Skipping request.');
             return {};
         }
 
@@ -24,19 +24,19 @@ export class ModrinthService {
 
         try {
             const response = await this.api.post('/version_files', payload);
-            return response.data; 
+            return response.data;
         } catch (error: any) {
-            console.error("\n--- MODRINTH API ERROR (getVersionsFromHashes) ---");
-            console.error("Endpoint: POST /v2/version_files");
-            console.error("Payload sent:", JSON.stringify(payload, null, 2));
-            
+            console.error('\n--- MODRINTH API ERROR (getVersionsFromHashes) ---');
+            console.error('Endpoint: POST /v2/version_files');
+            console.error('Payload sent:', JSON.stringify(payload, null, 2));
+
             if (error.response) {
-                console.error("Status Code:", error.response.status);
-                console.error("Response Data:", JSON.stringify(error.response.data, null, 2));
+                console.error('Status Code:', error.response.status);
+                console.error('Response Data:', JSON.stringify(error.response.data, null, 2));
             } else {
-                console.error("Error Message:", error.message);
+                console.error('Error Message:', error.message);
             }
-            console.error("----------------------------------------------------\n");
+            console.error('----------------------------------------------------\n');
             throw error;
         }
     }
@@ -52,22 +52,28 @@ export class ModrinthService {
             const response = await this.api.get('/projects', { params });
             return response.data;
         } catch (error: any) {
-            console.error("\n--- MODRINTH API ERROR (getProjects) ---");
-            console.error("Endpoint: GET /v2/projects");
-            console.error("Params sent:", JSON.stringify(params, null, 2));
-            
+            console.error('\n--- MODRINTH API ERROR (getProjects) ---');
+            console.error('Endpoint: GET /v2/projects');
+            console.error('Params sent:', JSON.stringify(params, null, 2));
+
             if (error.response) {
-                console.error("Status Code:", error.response.status);
-                console.error("Response Data:", JSON.stringify(error.response.data, null, 2));
+                console.error('Status Code:', error.response.status);
+                console.error('Response Data:', JSON.stringify(error.response.data, null, 2));
             } else {
-                console.error("Error Message:", error.message);
+                console.error('Error Message:', error.message);
             }
-            console.error("----------------------------------------------------\n");
+            console.error('----------------------------------------------------\n');
             throw error;
         }
     }
 
-    async getLatestVersion(projectId: string, gameVersions: string[], loaders: string[], allowedVersionTypes: string[], debug: boolean = false) {
+    async getLatestVersion(
+        projectId: string,
+        gameVersions: string[],
+        loaders: string[],
+        allowedVersionTypes: string[],
+        debug: boolean = false
+    ) {
         // Prepare the exact parameters Modrinth accepts
         const params = {
             game_versions: JSON.stringify(gameVersions),
@@ -83,34 +89,41 @@ export class ModrinthService {
         try {
             const response = await this.api.get(`/project/${projectId}/version`, { params });
             const versions = response.data;
-            
+
             if (debug && versions.length > 0) {
-                console.log(`[Debug] Modrinth returned ${versions.length} matching versions. Filtering for channels: [${allowedVersionTypes.join(', ')}]`);
+                console.log(
+                    `[Debug] Modrinth returned ${versions.length} matching versions. Filtering for channels: [${allowedVersionTypes.join(', ')}]`
+                );
             }
 
             // Perform the version_type filtering locally
             const validVersions = versions.filter((v: any) => allowedVersionTypes.includes(v.version_type));
-            
-            // Return the first valid version (the API returns them sorted newest to oldest)
-            return validVersions[0]; 
 
+            // Return the first valid version (the API returns them sorted newest to oldest)
+            return validVersions[0];
         } catch (error: any) {
             console.error(`\n--- MODRINTH API ERROR (getLatestVersion) ---`);
             console.error(`Endpoint: GET /v2/project/${projectId}/version`);
             console.error(`Params sent:`, JSON.stringify(params, null, 2));
-            
+
             if (error.response) {
-                console.error("Status Code:", error.response.status);
-                console.error("Response Data:", JSON.stringify(error.response.data, null, 2));
+                console.error('Status Code:', error.response.status);
+                console.error('Response Data:', JSON.stringify(error.response.data, null, 2));
             } else {
-                console.error("Error Message:", error.message);
+                console.error('Error Message:', error.message);
             }
-            console.error("---------------------------------------------\n");
+            console.error('---------------------------------------------\n');
             throw error;
         }
     }
 
-    async getCompatibleVersions(projectId: string, gameVersions: string[], loaders: string[], allowedVersionTypes: string[], debug: boolean = false) {
+    async getCompatibleVersions(
+        projectId: string,
+        gameVersions: string[],
+        loaders: string[],
+        allowedVersionTypes: string[],
+        debug: boolean = false
+    ) {
         const params = {
             game_versions: JSON.stringify(gameVersions),
             loaders: JSON.stringify(loaders)
@@ -119,7 +132,7 @@ export class ModrinthService {
         try {
             const response = await this.api.get(`/project/${projectId}/version`, { params });
             const versions = response.data;
-            
+
             // Return all matching versions for the core logic to evaluate
             return versions.filter((v: any) => allowedVersionTypes.includes(v.version_type));
         } catch (error: any) {

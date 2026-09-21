@@ -5,8 +5,8 @@ export class PterodactylService {
     private api = axios.create({
         baseURL: `${config.pteroUrl}/api/client`,
         headers: {
-            'Authorization': `Bearer ${config.pteroKey}`,
-            'Accept': 'application/json',
+            Authorization: `Bearer ${config.pteroKey}`,
+            Accept: 'application/json',
             'Content-Type': 'application/json'
         }
     });
@@ -68,11 +68,11 @@ export class PterodactylService {
     // Uploads a file buffer to the signed Pterodactyl URL
     async uploadFile(uploadUrl: string, fileName: string, fileBuffer: Buffer) {
         const formData = new FormData();
-        
+
         // Convert the Node Buffer into a standard Uint8Array / ArrayBuffer to satisfy BlobPart typing
         const uint8Array = new Uint8Array(fileBuffer);
         const blob = new Blob([uint8Array]);
-        
+
         formData.append('files', blob, fileName);
 
         await axios.post(uploadUrl, formData, {
@@ -93,6 +93,4 @@ export class PterodactylService {
         const response = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
         return Buffer.from(response.data);
     }
-
-    
 }

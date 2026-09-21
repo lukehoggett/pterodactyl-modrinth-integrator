@@ -48,7 +48,9 @@ export class ModManager {
         const identifiedMods = await this.modrinth.getVersionsFromHashes(hashes);
 
         // Fetch project details to determine client/server side support
-        const projectIds = [...new Set(Object.values(identifiedMods).map((m: any) => m.project_id))].filter(Boolean) as string[];
+        const projectIds = [...new Set(Object.values(identifiedMods).map((m: any) => m.project_id))].filter(
+            Boolean
+        ) as string[];
         const projects = await this.modrinth.getProjects(projectIds);
         const projectMap = projects.reduce((acc: any, p: any) => {
             acc[p.id] = p;
@@ -85,8 +87,10 @@ export class ModManager {
             const currentPublishedDate = new Date(match.date_published);
 
             let modSpecificAllowedTypes = [...allowedVersionTypes];
-            if (match.version_type === 'beta' && !modSpecificAllowedTypes.includes('beta')) modSpecificAllowedTypes.push('beta');
-            if (match.version_type === 'alpha' && !modSpecificAllowedTypes.includes('alpha')) modSpecificAllowedTypes.push('beta', 'alpha');
+            if (match.version_type === 'beta' && !modSpecificAllowedTypes.includes('beta'))
+                modSpecificAllowedTypes.push('beta');
+            if (match.version_type === 'alpha' && !modSpecificAllowedTypes.includes('alpha'))
+                modSpecificAllowedTypes.push('beta', 'alpha');
 
             const compatibleVersions = await this.modrinth.getCompatibleVersions(
                 mod.projectId,
@@ -120,7 +124,7 @@ export class ModManager {
 
         // Build the colorized table (No more visual hacks, strictly relying on the data state)
         const table = new Table({
-            head: ['File', 'Current', 'Latest', 'Side', 'Status'].map(h => chalk.bold(h))
+            head: ['File', 'Current', 'Latest', 'Side', 'Status'].map((h) => chalk.bold(h))
         });
 
         for (const m of modData) {
@@ -159,11 +163,11 @@ export class ModManager {
 
         if (options.debug && updatableMods.length > 0) {
             console.log(chalk.yellow('\n[Debug] The following mods passed the strict ID and Date check:'));
-            updatableMods.forEach(u => console.log(chalk.gray(` - ${u.name}: ID changed and date is newer.`)));
+            updatableMods.forEach((u) => console.log(chalk.gray(` - ${u.name}: ID changed and date is newer.`)));
         }
 
         if (updatableMods.length === 0) {
-            console.log("\nAll mods are up to date! Exiting.");
+            console.log('\nAll mods are up to date! Exiting.');
             return;
         }
 
@@ -181,7 +185,7 @@ export class ModManager {
             return;
         }
 
-        let modsToProcess = updatableMods.map(u => u.value);
+        let modsToProcess = updatableMods.map((u) => u.value);
 
         if (action === 'select') {
             modsToProcess = await checkbox({
