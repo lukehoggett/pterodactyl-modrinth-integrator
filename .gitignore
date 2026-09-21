@@ -1,3 +1,10 @@
+dist/
+build/
+
+# Env & IDE
+.env
+.vscode/
+
 # Logs
 logs
 *.log
