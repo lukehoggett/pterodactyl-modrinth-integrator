@@ -121,8 +121,7 @@ export class ModrinthService {
         projectId: string,
         gameVersions: string[],
         loaders: string[],
-        allowedVersionTypes: string[],
-        debug: boolean = false
+        allowedVersionTypes: string[]
     ) {
         const params = {
             game_versions: JSON.stringify(gameVersions),

@@ -86,7 +86,7 @@ export class ModManager {
             const currentId = match.id;
             const currentPublishedDate = new Date(match.date_published);
 
-            let modSpecificAllowedTypes = [...allowedVersionTypes];
+            const modSpecificAllowedTypes = [...allowedVersionTypes];
             if (match.version_type === 'beta' && !modSpecificAllowedTypes.includes('beta'))
                 modSpecificAllowedTypes.push('beta');
             if (match.version_type === 'alpha' && !modSpecificAllowedTypes.includes('alpha'))
