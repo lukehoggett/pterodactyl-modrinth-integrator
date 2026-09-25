@@ -46,8 +46,13 @@ export class ModManager {
         }
 
         const files = await this.ptero.getFiles(serverId, '/mods');
-        const jarFiles = files.filter((f: any) => f.attributes.name.endsWith('.jar'));
-        console.log(`[Update] Found ${jarFiles.length} .jar files. Hashing...\n`);
+        const jarFiles = files.filter(
+            (f: any) =>
+                f.attributes.name.endsWith('.jar') ||
+                f.attributes.name.endsWith('.jar.disabled') ||
+                f.attributes.name.endsWith('.disabled')
+        );
+        console.log(`[Update] Found ${jarFiles.length} mod files (.jar / .disabled). Hashing...\n`);
 
         const modData: any[] = [];
         const hashes: string[] = [];
@@ -67,7 +72,8 @@ export class ModManager {
                 hash,
                 currentVersion: 'Unknown',
                 latestVersion: 'Unknown',
-                updateAvailable: false
+                updateAvailable: false,
+                side: '?'
             });
 
             console.log(`[${chalk.cyan(hash)}] Done.`);
@@ -75,6 +81,16 @@ export class ModManager {
 
         console.log(`\n[Update] Querying Modrinth for version information...`);
         const identifiedMods = await this.modrinth.getVersionsFromHashes(hashes);
+
+        // Fetch project details to determine client/server side support
+        const projectIds = [...new Set(Object.values(identifiedMods).map((m: any) => m.project_id))].filter(
+            Boolean
+        ) as string[];
+        const projects = await this.modrinth.getProjects(projectIds);
+        const projectMap = projects.reduce((acc: any, p: any) => {
+            acc[p.id] = p;
+            return acc;
+        }, {});
 
         const updatableMods = [];
 
@@ -89,6 +105,18 @@ export class ModManager {
 
             mod.projectId = match.project_id;
             mod.currentVersion = match.version_number;
+
+            const project = projectMap[mod.projectId];
+            if (project) {
+                const cSupported = project.client_side && project.client_side !== 'unsupported';
+                const sSupported = project.server_side && project.server_side !== 'unsupported';
+                if (cSupported && sSupported) mod.side = 'SC';
+                else if (sSupported) mod.side = 'S';
+                else if (cSupported) mod.side = 'C';
+                else mod.side = '-';
+            } else {
+                mod.side = '?';
+            }
 
             const currentId = match.id;
             const currentPublishedDate = new Date(match.date_published);
@@ -140,7 +168,7 @@ export class ModManager {
 
         // Build the colorized table
         const table = new Table({
-            head: ['File', 'Current', 'Latest', 'Status'].map((h) => chalk.bold(h))
+            head: ['File', 'Current', 'Latest', 'Side', 'Status'].map((h) => chalk.bold(h))
         });
 
         for (const m of modData) {
@@ -169,7 +197,13 @@ export class ModManager {
                 displayLatest = m.currentVersion;
             }
 
-            table.push([rowColor(m.fileName), rowColor(m.currentVersion), rowColor(displayLatest), rowColor(status)]);
+            table.push([
+                rowColor(m.fileName),
+                rowColor(m.currentVersion),
+                rowColor(displayLatest),
+                rowColor(m.side),
+                rowColor(status)
+            ]);
         }
 
         console.log(`\n${table.toString()}`);
@@ -225,11 +259,13 @@ export class ModManager {
 
                 // Derive the clean filename from the download URL (or fallback to original name)
                 const newFileName = mod.downloadUrl.split('/').pop() || mod.fileName;
-                const disabledName = `${mod.fileName}.disabled`;
+                const disabledName = mod.fileName.endsWith('.disabled') ? mod.fileName : `${mod.fileName}.disabled`;
 
-                // 2. Rename the old file to append .disabled instead of deleting
-                console.log(`  Disabling old version (${mod.fileName} -> ${disabledName})...`);
-                await this.ptero.renameFile(serverId, mod.fileName, disabledName);
+                // 2. Rename the old file to append .disabled instead of deleting (if not already disabled)
+                if (disabledName !== mod.fileName) {
+                    console.log(`  Disabling old version (${mod.fileName} -> ${disabledName})...`);
+                    await this.ptero.renameFile(serverId, mod.fileName, disabledName);
+                }
 
                 // 3. Get a fresh upload URL from Pterodactyl
                 const uploadUrl = await this.ptero.getUploadUrl(serverId);
